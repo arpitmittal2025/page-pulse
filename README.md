@@ -3,7 +3,7 @@
 A small web tool that audits any public URL and returns a JSON health report: HTTP status, response time, page title, meta description, H1 count, images missing alt text, and approximate word count.
 
 **Live:** `https://page-pulse-j1f7.onrender.com`
-**Repo:** `https://github.com/<you>/page-pulse`
+**Repo:** `https://github.com/arpitmittal2025/page-pulse`
 
 ---
 
@@ -12,7 +12,7 @@ A small web tool that audits any public URL and returns a JSON health report: HT
 Requires Node 18+ (uses the built-in `fetch` and `node:test`).
 
 ```bash
-git clone https://github.com/<you>/page-pulse.git
+git clone https://github.com/arpitmittal2025/page-pulse.git
 cd page-pulse
 npm install
 npm start          # http://localhost:3000
@@ -156,3 +156,18 @@ tests/
 ---
 
 Built for [Digital Heroes Training Task](https://digitalheroesco.com)
+
+---
+
+## AI use
+
+I used Claude to scaffold this project: the Express structure, the parser
+module, and the first pass of the test suite. Running the tests locally
+surfaced two wrong assertions — a miscounted word count, and an H1
+expectation that didn't match how Cheerio recovers from unclosed tags. I
+fixed both, and rewrote the malformed-markup test to assert the property
+actually under test (that it doesn't throw) rather than an exact salvaged
+count. I also fixed the npm test script, which used a trailing-slash path
+that fails on Windows. The design decisions above — the pure-parser split,
+treating upstream HTTP status as data, and the SSRF allow-list — I reviewed
+and can defend.
