@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Page Pulse — audit any URL</title>
+<meta name="description" content="Page Pulse fetches any URL and reports status, speed, title, meta description, H1 count, missing image alt text, and word count." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #9aa3b2;
+    --accent: #6ee7b7;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main { width: min(860px, 92vw); margin: 0 auto; padding: 48px 0 32px; flex: 1; }
+  h1 { font-size: 1.9rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+
+  form { display: flex; gap: 10px; flex-wrap: wrap; }
+  input[type="url"], input[type="text"] {
+    flex: 1 1 320px;
+    padding: 13px 15px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 1rem;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    padding: 13px 22px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #05261b;
+    font-weight: 650;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: .55; cursor: progress; }
+
+  .examples { margin: 12px 0 0; color: var(--muted); font-size: .88rem; }
+  .examples button {
+    background: transparent; color: var(--accent); border: 0; padding: 0 4px;
+    font-size: .88rem; font-weight: 500; cursor: pointer; text-decoration: underline;
+  }
+
+  .card {
+    margin-top: 26px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; display: none;
+  }
+  .card.show { display: block; }
+  .card.error { border-color: #5b2b2b; background: #1d1416; }
+  .err-code {
+    display: inline-block; font: 600 .72rem ui-monospace, monospace; letter-spacing: .08em;
+    color: var(--bad); border: 1px solid #5b2b2b; border-radius: 6px; padding: 2px 7px; margin-bottom: 8px;
+  }
+
+  .url-line { color: var(--muted); font-size: .85rem; word-break: break-all; margin-bottom: 16px; }
+  .url-line strong { color: var(--text); font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 13px 15px; }
+  .stat .label { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+  .stat .value { font-size: 1.45rem; font-weight: 650; margin-top: 4px; }
+  .value.good { color: var(--accent); } .value.warn { color: var(--warn); } .value.bad { color: var(--bad); }
+
+  .rows { margin-top: 16px; }
+  .row { padding: 12px 0; border-top: 1px solid var(--line); }
+  .row .label { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+  .row .value { margin-top: 3px; word-break: break-word; }
+  .row .value.empty { color: var(--warn); font-style: italic; }
+  ul.samples { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: .85rem; }
+  ul.samples li { word-break: break-all; }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; margin-right: 7px; vertical-align: -2px;
+    border: 2px solid rgba(5,38,27,.35); border-top-color: #05261b; border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer {
+    border-top: 1px solid var(--line); padding: 20px 0; text-align: center;
+    color: var(--muted); font-size: .88rem;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Page Pulse</h1>
+  <p class="sub">Audit any public web page: status, speed, and on-page SEO signals.</p>
+
+  <form id="form" novalidate>
+    <input id="url" type="text" name="url" placeholder="example.com" autocomplete="url"
+           spellcheck="false" aria-label="URL to audit" required />
+    <button id="submit" type="submit">Audit</button>
+  </form>
+  <p class="examples">
+    Try:
+    <button type="button" data-ex="https://example.com">example.com</button>·
+    <button type="button" data-ex="https://digitalheroesco.com">digitalheroesco.com</button>·
+    <button type="button" data-ex="https://developer.mozilla.org">developer.mozilla.org</button>
+  </p>
+
+  <section id="result" class="card" aria-live="polite"></section>
+</main>
+
+<footer>
+  Built for <a href="https://digitalheroesco.com" target="_blank" rel="noopener noreferrer">Digital Heroes Training Task</a>
+</footer>
+
+<script>
+  const form = document.getElementById('form');
+  const input = document.getElementById('url');
+  const submit = document.getElementById('submit');
+  const result = document.getElementById('result');
+
+  document.querySelectorAll('[data-ex]').forEach((b) => {
+    b.addEventListener('click', () => { input.value = b.dataset.ex; form.requestSubmit(); });
+  });
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const num = (n) => Number(n).toLocaleString();
+
+  function tone(kind, v) {
+    if (kind === 'status') return v >= 200 && v < 300 ? 'good' : v < 400 ? 'warn' : 'bad';
+    if (kind === 'time') return v < 800 ? 'good' : v < 2500 ? 'warn' : 'bad';
+    if (kind === 'h1') return v === 1 ? 'good' : v === 0 ? 'bad' : 'warn';
+    if (kind === 'alt') return v === 0 ? 'good' : v <= 3 ? 'warn' : 'bad';
+    return '';
+  }
+
+  function renderError(err) {
+    const d = err.details || {};
+    const extra = d.httpStatus
+      ? `<div class="rows"><div class="row"><div class="label">HTTP status</div><div class="value">${esc(d.httpStatus)}</div></div>
+         <div class="row"><div class="label">Content type</div><div class="value">${esc(d.contentType || 'unknown')}</div></div>
+         <div class="row"><div class="label">Response time</div><div class="value">${num(d.responseTimeMs)} ms</div></div></div>`
+      : '';
+    result.className = 'card show error';
+    result.innerHTML = `<span class="err-code">${esc(err.code || 'ERROR')}</span>
+      <div>${esc(err.message || 'Something went wrong.')}</div>${extra}`;
+  }
+
+  function renderReport(r) {
+    const missing = r.images.missingAlt;
+    const samples = missing && r.images.missingAltSamples?.length
+      ? `<ul class="samples">${r.images.missingAltSamples.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`
+      : '';
+
+    result.className = 'card show';
+    result.innerHTML = `
+      <div class="url-line"><strong>${esc(r.url)}</strong>${r.redirected ? ` (redirected from ${esc(r.requestedUrl)})` : ''}</div>
+      <div class="grid">
+        <div class="stat"><div class="label">HTTP status</div>
+          <div class="value ${tone('status', r.httpStatus)}">${esc(r.httpStatus)}</div></div>
+        <div class="stat"><div class="label">Response time</div>
+          <div class="value ${tone('time', r.responseTimeMs)}">${num(r.responseTimeMs)} ms</div></div>
+        <div class="stat"><div class="label">H1 count</div>
+          <div class="value ${tone('h1', r.h1Count)}">${esc(r.h1Count)}</div></div>
+        <div class="stat"><div class="label">Images w/o alt</div>
+          <div class="value ${tone('alt', missing)}">${esc(missing)} <span style="font-size:.8rem;color:var(--muted)">/ ${esc(r.images.total)}</span></div></div>
+        <div class="stat"><div class="label">Word count</div>
+          <div class="value">≈ ${num(r.wordCount)}</div></div>
+      </div>
+      <div class="rows">
+        <div class="row"><div class="label">Title</div>
+          <div class="value ${r.title ? '' : 'empty'}">${r.title ? esc(r.title) : 'Missing'}</div></div>
+        <div class="row"><div class="label">Meta description</div>
+          <div class="value ${r.metaDescription ? '' : 'empty'}">${r.metaDescription ? esc(r.metaDescription) : 'Missing'}</div></div>
+        <div class="row"><div class="label">Images missing alt text</div>
+          <div class="value">${esc(missing)} of ${esc(r.images.total)}${samples}</div></div>
+      </div>`;
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const url = input.value.trim();
+    if (!url) return;
+
+    submit.disabled = true;
+    submit.innerHTML = '<span class="spinner"></span>Auditing';
+    result.className = 'card show';
+    result.textContent = 'Fetching the page…';
+
+    try {
+      const response = await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw { code: 'BAD_RESPONSE', message: `Server returned ${response.status} with an unreadable body.` };
+      }
+
+      if (payload.ok) renderReport(payload.data);
+      else renderError(payload.error || {});
+    } catch (error) {
+      renderError(error?.code ? error : { code: 'NETWORK_ERROR', message: 'Could not reach the Page Pulse API.' });
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Audit';
+    }
+  });
+</script>
+</body>
+</html>
