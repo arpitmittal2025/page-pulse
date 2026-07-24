@@ -2,7 +2,7 @@
 
 A small web tool that audits any public URL and returns a JSON health report: HTTP status, response time, page title, meta description, H1 count, images missing alt text, and approximate word count.
 
-**Live:** `https://<your-deployment>.onrender.com`
+**Live:** `https://page-pulse-j1f7.onrender.com`
 **Repo:** `https://github.com/<you>/page-pulse`
 
 ---
